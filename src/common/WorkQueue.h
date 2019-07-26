@@ -342,6 +342,7 @@ public:
 
   };
 
+  // 值得注意的是PointerWQ是没有深度限制的
   template<typename T>
   class PointerWQ : public WorkQueue_ {
   public:

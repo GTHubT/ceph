@@ -22,6 +22,8 @@ class AioCompletion;
 template <typename> class ImageRequest;
 class ReadResult;
 
+// ImageRequestWQ继承自ThreadPool::PointerWQ<ImageRequest<ImageCtxT> >
+// ImageRequestW同时具备work队列的作用
 template <typename ImageCtxT = librbd::ImageCtx>
 class ImageRequestWQ
   : public ThreadPool::PointerWQ<ImageRequest<ImageCtxT> > {

@@ -228,6 +228,9 @@ void ImageRequestWQ<I>::aio_read(AioCompletion *c, uint64_t off, uint64_t len,
   RWLock::RLocker owner_locker(m_image_ctx.owner_lock);
   if (m_image_ctx.non_blocking_aio || writes_blocked() || !writes_empty() ||
       require_lock_on_read()) {
+    // create_read_request会创建一个imageReadRequest
+    // 这里的参数{{off, len}}需要注意，他会被转换成Extents，这个Extents其实就是一个vector
+    // 数组。
     queue(ImageRequest<I>::create_read_request(
             m_image_ctx, c, {{off, len}}, std::move(read_result), op_flags,
             trace));
@@ -713,6 +716,7 @@ bool ImageRequestWQ<I>::is_lock_required(bool write_op) const {
           (!write_op && m_require_lock_on_read));
 }
 
+// IO会被打包放到队列
 template <typename I>
 void ImageRequestWQ<I>::queue(ImageRequest<I> *req) {
   assert(m_image_ctx.owner_lock.is_locked());
@@ -727,6 +731,8 @@ void ImageRequestWQ<I>::queue(ImageRequest<I> *req) {
     m_queued_reads++;
   }
 
+  // 这个队列中的元素类型时ImageRequest,ImageRequest是一个基类
+  // read或者write有对应的ImageRequest子类
   ThreadPool::PointerWQ<ImageRequest<I> >::queue(req);
 }
 

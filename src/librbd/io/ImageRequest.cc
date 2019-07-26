@@ -239,7 +239,10 @@ void ImageRequest<I>::aio_compare_and_write(I *ictx, AioCompletion *c,
   req.send();
 }
 
-
+// 所有的IO在threadpool的imageRequestWQ中处理都会调用
+// ImageRequest基类的send。
+// send主要做两件事：clip_request/send_request
+// 注意：m_image_ctx就是上层传下来的这次IO要进行读写的offset+length的组合
 template <typename I>
 void ImageRequest<I>::send() {
   I &image_ctx = this->m_image_ctx;
@@ -319,6 +322,8 @@ int ImageReadRequest<I>::clip_request() {
   return 0;
 }
 
+// 最后所有的IO都是通过自己的send request发送出去
+// send request会将io切分
 template <typename I>
 void ImageReadRequest<I>::send_request() {
   I &image_ctx = this->m_image_ctx;
