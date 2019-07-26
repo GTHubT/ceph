@@ -242,7 +242,7 @@ void ImageRequest<I>::aio_compare_and_write(I *ictx, AioCompletion *c,
 // 所有的IO在threadpool的imageRequestWQ中处理都会调用
 // ImageRequest基类的send。
 // send主要做两件事：clip_request/send_request
-// 注意：m_image_ctx就是上层传下来的这次IO要进行读写的offset+length的组合
+// 注意：m_image_extents就是上层传下来的这次IO要进行读写的offset+length的组合
 template <typename I>
 void ImageRequest<I>::send() {
   I &image_ctx = this->m_image_ctx;
@@ -255,12 +255,16 @@ void ImageRequest<I>::send() {
                  << "completion=" << aio_comp << dendl;
 
   aio_comp->get();
+
+  // 校验io 参数有效性
   int r = clip_request();
   if (r < 0) {
     m_aio_comp->fail(r);
     return;
   }
 
+  // send request是在各个子类里实现的，ImageRequest基类并没实现send request
+  // 各个子类会实现对应的send request
   if (m_bypass_image_cache || m_image_ctx.image_cache == nullptr) {
     send_request();
   } else {
@@ -268,11 +272,15 @@ void ImageRequest<I>::send() {
   }
 }
 
+// typedef std::vector<std::pair<uint64_t,uint64_t> > Extents;
+// extents的每个元素是一个pair，这个pair的second是length，first对应的是offset
 template <typename I>
 int ImageRequest<I>::clip_request() {
   RWLock::RLocker snap_locker(m_image_ctx.snap_lock);
   for (auto &image_extent : m_image_extents) {
     auto clip_len = image_extent.second;
+    // clip io是为了校验offset和length，length需要大于等于0
+    // offset + length需要小于image size，如果大于则将其length截断
     int r = clip_io(get_image_ctx(&m_image_ctx), image_extent.first, &clip_len);
     if (r < 0) {
       return r;
@@ -323,12 +331,17 @@ int ImageReadRequest<I>::clip_request() {
 }
 
 // 最后所有的IO都是通过自己的send request发送出去
-// send request会将io切分
+// send request会将io切分。
+// 有几个注意点: 
+// 1. librbd如何拿到底层osd信息，就是这个offset对应到
+// 哪个object，这个信息是通过计算出来的还是librbd去一个地方拿到的
+// 然后缓存在本地的?
 template <typename I>
 void ImageReadRequest<I>::send_request() {
   I &image_ctx = this->m_image_ctx;
   CephContext *cct = image_ctx.cct;
 
+  // image_extents为本次读写的offset、length
   auto &image_extents = this->m_image_extents;
   if (image_ctx.object_cacher && image_ctx.readahead_max_bytes > 0 &&
       !(m_op_flags & LIBRADOS_OP_FLAG_FADVISE_RANDOM)) {
@@ -351,6 +364,8 @@ void ImageReadRequest<I>::send_request() {
         continue;
       }
 
+      // 将用户的LBA: offset+length转换为底层文件的object和对应object的offset+length
+      // 上层LBA到底层分布式存储的映射，这步是关键。
       Striper::file_to_extents(cct, image_ctx.format_string, &image_ctx.layout,
                                extent.first, extent.second, 0, object_extents,
                                buffer_ofs);
@@ -358,6 +373,10 @@ void ImageReadRequest<I>::send_request() {
     }
   }
 
+  // 异步发送io请求，一个用户的IO请求，其LBA连续的地址可能对应到底层多个object
+  // 对应到不同的osd就会切分为一个单独的子request，那么用户的IO就是一个父request
+  // 父request会包含多个子request，且只有所有的子request都返回的时候父request才能
+  // 正常向上返回，且只要一个子request返回错误，这个父request就向上返回错误
   // pre-calculate the expected number of read requests
   uint32_t request_count = 0;
   for (auto &object_extent : object_extents) {
@@ -365,6 +384,8 @@ void ImageReadRequest<I>::send_request() {
   }
   aio_comp->set_request_count(request_count);
 
+  // 因为object是分布在osd上的，所以在拆分用户IO导object之后，就要
+  // 向对应object所在的osd发送网络请求。
   // issue the requests
   for (auto &object_extent : object_extents) {
     for (auto &extent : object_extent.second) {

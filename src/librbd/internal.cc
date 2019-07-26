@@ -2199,6 +2199,7 @@ int validate_pool(IoCtx &io_ctx, CephContext *cct) {
     return total_read;
   }
 
+  // 对用户下发的offset和len进行检验
   // validate extent against image size; clip to image size if necessary
   int clip_io(ImageCtx *ictx, uint64_t off, uint64_t *len)
   {
@@ -2217,6 +2218,7 @@ int validate_pool(IoCtx &io_ctx, CephContext *cct) {
     if (off >= image_size)
       return -EINVAL;
 
+    // 如果length + offset超出image大小，那么就直接将其len截断
     // clip requests that extend past end to just end
     if ((off + *len) > image_size)
       *len = (size_t)(image_size - off);
