@@ -195,6 +195,7 @@ ssize_t ImageRequestWQ<I>::compare_and_write(uint64_t off, uint64_t len,
   return len;
 }
 
+// qemu一侧下发的IO经过最上层的接口转发之后，会转发到ImageRequestWQ对应的接口
 template <typename I>
 void ImageRequestWQ<I>::aio_read(AioCompletion *c, uint64_t off, uint64_t len,
 				 ReadResult &&read_result, int op_flags,
@@ -215,6 +216,9 @@ void ImageRequestWQ<I>::aio_read(AioCompletion *c, uint64_t off, uint64_t len,
     c->set_event_notify(true);
   }
 
+  // 更新inflight io计数
+  // inflight io在关闭阶段需要全部回收
+  // 并且需要对新下发的IO直接返回错误
   if (!start_in_flight_io(c)) {
     return;
   }
@@ -228,6 +232,8 @@ void ImageRequestWQ<I>::aio_read(AioCompletion *c, uint64_t off, uint64_t len,
             m_image_ctx, c, {{off, len}}, std::move(read_result), op_flags,
             trace));
   } else {
+    // 每个IO最后发起是由aiocompletion自己来发起的
+    // start op调用会让op自己触发op
     c->start_op();
     ImageRequest<I>::aio_read(&m_image_ctx, c, {{off, len}},
 			      std::move(read_result), op_flags, trace);
@@ -603,14 +609,21 @@ void *ImageRequestWQ<I>::_void_dequeue() {
   return item;
 }
 
+// ImageRequestWQ继承自workqueue，然后实现了workqueue的process函数
+// imageRequestWQ收到的请求都会调用这个process函数进行处理
 template <typename I>
 void ImageRequestWQ<I>::process(ImageRequest<I> *req) {
   CephContext *cct = m_image_ctx.cct;
   ldout(cct, 20) << "ictx=" << &m_image_ctx << ", "
                  << "req=" << req << dendl;
 
+  // 因为每个io从qemu下发之后在librbd层接口就被封装成一个
+  // imageRequest，每个imagerequest都有自己的send函数
+  // 在process函数中直接调用这个send，而不需要做判断当前属于
+  // 哪种类型的IO。
   req->send();
 
+  //
   finish_queued_io(req);
   if (req->is_write_op()) {
     finish_in_flight_write();

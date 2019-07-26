@@ -1587,6 +1587,14 @@ namespace librbd {
     return 0;
   }
 
+  // 用户通过调用librbd.h的c风格接口将io下发，librbd通过内部的接口转发到C++的接口，也就是
+  // Image类所提供的额aio read接口。当前这个接口做了两件事，一个是trace，另一个是将用户的
+  // IO直接打包扔进队列。
+  // 注意一点是，这里为什么要扔进队列？因为在块存储场景中，虚拟机场景下qemu调librbd来实现
+  // io, QEMU早起版本只有一个线程进行IO，就是说这个线程负责所有虚拟机的IO，那么如果librbd
+  // 在这个线程里阻塞了，就会导致qemu被阻塞，虚拟机所有的IO都被阻塞，虚拟机就不可用来。
+  // 因此这里把IO push到队列，这样IO就返回了。
+  // 这是对于异步接口来说的，对于同步接口，阻塞调用可接受。
   int Image::aio_read(uint64_t off, size_t len, bufferlist& bl,
 		      RBD::AioCompletion *c)
   {

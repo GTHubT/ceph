@@ -61,6 +61,8 @@ namespace librbd {
   template <typename> class ResizeRequest;
   }
 
+  // imageCtx对应到一个用户的一个imgae，也就是用户创建的一个卷
+  // 这个结构体包含了所有io处理所需模块
   struct ImageCtx {
     CephContext *cct;
     PerfCounters *perfcounter;
@@ -155,6 +157,8 @@ namespace librbd {
 
     xlist<operation::ResizeRequest<ImageCtx>*> resize_reqs;
 
+    // 这个队列很重要，是当前这个image的io队列，所有的IO经过
+    // librbd内部将qemu一侧下发的IO直接扔到这个队列
     io::ImageRequestWQ<ImageCtx> *io_work_queue;
     xlist<io::AioCompletion*> completed_reqs;
     EventSocket event_socket;
