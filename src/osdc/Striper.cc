@@ -39,6 +39,8 @@ void Striper::file_to_extents(CephContext *cct, const char *object_format,
   assimilate_extents(object_extents, extents);
 }
 
+
+// 该函数负责将用户offset、len映射到底层的osd及其object
 void Striper::file_to_extents(
   CephContext *cct, const char *object_format,
   const file_layout_t *layout,

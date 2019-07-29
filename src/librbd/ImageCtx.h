@@ -62,7 +62,7 @@ namespace librbd {
   }
 
   // imageCtx对应到一个用户的一个imgae，也就是用户创建的一个卷
-  // 这个结构体包含了所有io处理所需模块
+  // 这个结构体包含了所有io处理所需模块，以及image的LBA到osd和object映射
   struct ImageCtx {
     CephContext *cct;
     PerfCounters *perfcounter;
@@ -133,6 +133,7 @@ namespace librbd {
     uint64_t flags;
     utime_t create_timestamp;
 
+    // 当前文件的的基本信息
     file_layout_t layout;
 
     cache::ImageCache *image_cache = nullptr;
