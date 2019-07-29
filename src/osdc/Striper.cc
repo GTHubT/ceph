@@ -48,6 +48,8 @@ void Striper::file_to_extents(CephContext *cct, const char *object_format,
 
 
 // 该函数负责将用户offset、len映射到底层的osd及其object
+// 先找到对应的stripe，然后找到对应的objectset。然后找到对应的
+// object。
 void Striper::file_to_extents(
   CephContext *cct, const char *object_format,
   const file_layout_t *layout,
@@ -77,6 +79,7 @@ void Striper::file_to_extents(
   // stripe是对object的又一层划分，这个划分使其最小写入单位变小，也能够
   // 提高一个object的并发了粒度，这也是典型的通过partition来实现提高并发
   // 的做法。
+  // stripe（条带化）概念只存在于librbd，对于底层的osd是透明的
   __u32 object_size = layout->object_size;
   __u32 su = layout->stripe_unit;
   __u32 stripe_count = layout->stripe_count;
@@ -90,6 +93,8 @@ void Striper::file_to_extents(
 		 << object_size << " stripes_per_object " << stripes_per_object
 		 << dendl;
 
+  // stripe_unit是当前rbd条带化的单元，比如4K或者64K，也就是一个条带的size
+  // stripe_count是当前objectset的对象数量
   uint64_t cur = offset;
   uint64_t left = len;
   while (left > 0) {

@@ -37,6 +37,8 @@ struct ObjectRequestHandle {
  * Its subclasses encapsulate logic for dealing with special cases
  * for I/O due to layering.
  */
+// 用户大IO被拆分成多个ObjectRequest
+// objectrequest是到一个object的独立网络事件
 template <typename ImageCtxT = ImageCtx>
 class ObjectRequest : public ObjectRequestHandle {
 public:
@@ -132,12 +134,20 @@ public:
                                  parent_trace, completion);
   }
 
+  // ImageCtxT是当前image的上下文信息，包含了当前image的layout
+  // oid是当前request对应的object的name
+  // objectno是当前object的index
+  // offset是当前object内的offset， len是读取当前object的长度
+  // 这个offset与object与用户的IO的offset与len没有直接的关系，但是是其拆分的结果
+  // completion是当前objectrequest完成之后会调用的对象，这个completion会更新
+  // aio completion的计数信息
   ObjectReadRequest(ImageCtxT *ictx, const std::string &oid,
                     uint64_t objectno, uint64_t offset, uint64_t len,
                     librados::snap_t snap_id, int op_flags,
                     bool cache_initiated, const ZTracer::Trace &parent_trace,
                     Context *completion);
 
+  // 每个request有自己的send函数，最后向osd发送请求，都是通过request自己的send完成的
   void send() override;
 
   inline uint64_t get_offset() const {

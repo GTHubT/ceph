@@ -348,6 +348,8 @@ void ImageReadRequest<I>::send_request() {
     readahead(get_image_ctx(&image_ctx), image_extents);
   }
 
+  // aio completion是当前用户的一个异步IO上下文，包含了当前异步IO的所有信息
+  // 包括当前IO被切分为多少个objectrequest等等
   AioCompletion *aio_comp = this->m_aio_comp;
   librados::snap_t snap_id;
   map<object_t,vector<ObjectExtent> > object_extents;
@@ -382,6 +384,8 @@ void ImageReadRequest<I>::send_request() {
   for (auto &object_extent : object_extents) {
     request_count += object_extent.second.size();
   }
+
+  // 设置当前io被切分成多少个子io，这些子io必须全部收回才能向用户返回IO结果
   aio_comp->set_request_count(request_count);
 
   // 因为object是分布在osd上的，所以在拆分用户IO导object之后，就要
@@ -393,11 +397,15 @@ void ImageReadRequest<I>::send_request() {
                      << extent.length << " from " << extent.buffer_extents
                      << dendl;
 
+      // req_comp是每一个objectrequest的closure，当这个request完成的时候
+      // 通过req_comp来来调用其aio_completion，向上返回给aio completion
+      // C_SparseReadRequest里保存了这个objectrequest隶属于哪个aio的
       auto req_comp = new io::ReadResult::C_SparseReadRequest<I>(
         aio_comp, std::move(extent.buffer_extents), true);
       ObjectReadRequest<I> *req = ObjectReadRequest<I>::create(
         &image_ctx, extent.oid.name, extent.objectno, extent.offset,
         extent.length, snap_id, m_op_flags, false, this->m_trace, req_comp);
+
       req_comp->request = req;
       req->send();
     }

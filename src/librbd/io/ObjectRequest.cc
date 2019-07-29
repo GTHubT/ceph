@@ -256,6 +256,7 @@ void ObjectReadRequest<I>::read_object() {
 
   ldout(image_ctx->cct, 20) << dendl;
 
+  // ObjectReadOperation主要用来做同一个object的request batch
   librados::ObjectReadOperation op;
   if (this->m_object_len >= image_ctx->sparse_read_threshold_bytes) {
     op.sparse_read(this->m_object_off, this->m_object_len, &m_ext_map,
@@ -269,6 +270,8 @@ void ObjectReadRequest<I>::read_object() {
   librados::AioCompletion *rados_completion = util::create_rados_callback<
     ObjectReadRequest<I>, &ObjectReadRequest<I>::handle_read_object>(this);
   int flags = image_ctx->get_read_flags(this->m_snap_id);
+
+  // 发起aio操作
   int r = image_ctx->data_ctx.aio_operate(
     this->m_oid, rados_completion, &op, flags, nullptr,
     (this->m_trace.valid() ? this->m_trace.get_info() : nullptr));

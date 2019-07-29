@@ -2267,6 +2267,7 @@ void Objecter::resend_mon_ops()
 
 // read | write ---------------------------
 
+// 提交读写事件
 void Objecter::op_submit(Op *op, ceph_tid_t *ptid, int *ctx_budget)
 {
   shunique_lock rl(rwlock, ceph::acquire_shared);
@@ -2384,6 +2385,7 @@ void Objecter::_send_op_account(Op *op)
   }
 }
 
+// op中的target.osid在什么时候被赋值？target.pgid?
 void Objecter::_op_submit(Op *op, shunique_lock& sul, ceph_tid_t *ptid)
 {
   // rwlock is locked

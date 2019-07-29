@@ -1254,6 +1254,7 @@ public:
 
   struct OSDSession;
 
+  // 当前op要发送的目标信息
   struct op_target_t {
     int flags = 0;
 
@@ -1273,6 +1274,7 @@ public:
     ///< explcit pg target, if any
     pg_t base_pgid;
 
+    // pg信息
     pg_t pgid; ///< last (raw) pg we mapped to
     spg_t actual_pgid; ///< last (actual) spg_t we mapped to
     unsigned pg_num = 0; ///< last pg_num we mapped to
@@ -1289,6 +1291,7 @@ public:
     bool used_replica = false;
     bool paused = false;
 
+    // osd信息
     int osd = -1;      ///< the final target osd, or -1
 
     epoch_t last_force_resend = 0;
@@ -1331,6 +1334,8 @@ public:
     OSDSession *session;
     int incarnation;
 
+    // op_target_t保存当前op需要发送的目标信息
+    // 包括pg信息及osd信息
     op_target_t target;
 
     ConnectionRef con;  // for rx buffer only
