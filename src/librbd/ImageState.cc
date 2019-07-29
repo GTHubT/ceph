@@ -256,6 +256,9 @@ int ImageState<I>::open(bool skip_open_parent) {
   return r;
 }
 
+
+// ImageState是当前的image状态，当前image包括open、close
+// open、close的操作也是由imagestate来发起
 template <typename I>
 void ImageState<I>::open(bool skip_open_parent, Context *on_finish) {
   CephContext *cct = m_image_ctx->cct;
@@ -574,6 +577,8 @@ void ImageState<I>::complete_action_unlock(State next_state, int r) {
   }
 }
 
+// 在send open unlock中会发送openrequest请求
+// send会发送open请求
 template <typename I>
 void ImageState<I>::send_open_unlock() {
   assert(m_lock.is_locked());

@@ -1325,7 +1325,9 @@ public:
     void dump(Formatter *f) const;
   };
 
+  // 当前op所需要的所有信息
   struct Op : public RefCountedObject {
+    // 当前OP所要发往的osd对应的session
     OSDSession *session;
     int incarnation;
 
@@ -1827,6 +1829,7 @@ public:
 
     int osd;
     int incarnation;
+    // 与osd的连接
     ConnectionRef con;
     int num_locks;
     std::unique_ptr<std::mutex[]> completion_locks;

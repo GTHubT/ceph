@@ -26,6 +26,13 @@
 #define dout_prefix *_dout << "striper "
 
 
+// 一个用户IO下发到底层osd，需要以下映射
+// LBA -> Object -> PG -> OSD
+// rbd在数据分布中引入了stripe的概念，即条带化
+// ceph得条带化即为RAID0的方式，这种条带化的方式有助于提高并发
+// 相邻stripe被分在不同的object上，不同object会分在不同的pg上
+// 不同的pg是可以并发的，那么可以将用户的大块顺序写，变为并发
+// ceph条带化可参考：http://www.10tiao.com/html/362/201702/2654062777/1.html
 void Striper::file_to_extents(CephContext *cct, const char *object_format,
 			      const file_layout_t *layout,
 			      uint64_t offset, uint64_t len,
@@ -60,6 +67,16 @@ void Striper::file_to_extents(
    * buffer.. hence ObjectExtent.buffer_extents
    */
 
+  // rbd中image是用户创建的一个块设备，块设备是一个虚拟概念vdisk
+  // 这个vdisk会真正的存储单元会分散在底层多个osd上，osd对应到底层
+  // 物理机的一个磁盘，这个磁盘会被划分成多个object，object是一个
+  // 逻辑概念，一块磁盘大小4T，一个object默认大小为4M，那么这个4T的
+  // 盘上存储着4T/4M也就是1K的object，这些object会分散在多个pg，
+  // 一个vdisk会被打散到多个pg，所以最终写入需要先找到LBA->Object
+  // 然后找object->pg, 然后pg->osd，这样一个逻辑顺序
+  // stripe是对object的又一层划分，这个划分使其最小写入单位变小，也能够
+  // 提高一个object的并发了粒度，这也是典型的通过partition来实现提高并发
+  // 的做法。
   __u32 object_size = layout->object_size;
   __u32 su = layout->stripe_unit;
   __u32 stripe_count = layout->stripe_count;
@@ -90,6 +107,8 @@ void Striper::file_to_extents(
     // find oid, extent
     char buf[strlen(object_format) + 32];
     snprintf(buf, sizeof(buf), object_format, (long long unsigned)objectno);
+    
+    // 这里对object name进行赋值，命名格式是object_id
     object_t oid = buf;
 
     // map range into object
@@ -118,6 +137,8 @@ void Striper::file_to_extents(
       ex = &exv.back();
       ex->oid = oid;
       ex->objectno = objectno;
+
+      // 当前extent的位置信息，即：logicalpoolID+namespace
       ex->oloc = OSDMap::file_to_object_locator(*layout);
 
       ex->offset = x_offset;

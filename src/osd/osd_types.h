@@ -216,6 +216,7 @@ namespace std {
 
 // -----
 
+// object的place信息，这个location保存了当前object的位置
 // a locator constrains the placement of an object.  mainly, which pool
 // does it go in.
 struct object_locator_t {

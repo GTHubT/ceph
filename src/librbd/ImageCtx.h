@@ -150,6 +150,7 @@ namespace librbd {
     xlist<AsyncRequest<>*> async_requests;
     std::list<Context*> async_requests_waiters;
 
+    // state是当前image的状态
     ImageState<ImageCtx> *state;
     Operations<ImageCtx> *operations;
 

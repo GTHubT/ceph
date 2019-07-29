@@ -69,6 +69,12 @@
         "utility": "cpp",
         "variant": "cpp",
         "vector": "cpp",
-        "algorithm": "cpp"
+        "algorithm": "cpp",
+        "fstream": "cpp",
+        "*.ipp": "cpp",
+        "__functional_base_03": "cpp",
+        "queue": "cpp",
+        "stack": "cpp",
+        "future": "cpp"
     }
 }

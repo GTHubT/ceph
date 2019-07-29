@@ -37,6 +37,7 @@ OpenRequest<I>::OpenRequest(I *image_ctx, bool skip_open_parent,
     m_last_metadata_key(ImageCtx::METADATA_CONF_PREFIX) {
 }
 
+// open request发送
 template <typename I>
 void OpenRequest<I>::send() {
   send_v2_detect_header();
@@ -80,6 +81,7 @@ Context *OpenRequest<I>::handle_v1_detect_header(int *result) {
   return nullptr;
 }
 
+// 真正的io发送逻辑
 template <typename I>
 void OpenRequest<I>::send_v2_detect_header() {
   if (m_image_ctx->id.empty()) {
@@ -136,6 +138,8 @@ void OpenRequest<I>::send_v2_get_id() {
   comp->release();
 }
 
+// 第一次open文件后，正常打开之后
+// 需要获取immutable metadata
 template <typename I>
 Context *OpenRequest<I>::handle_v2_get_id(int *result) {
   CephContext *cct = m_image_ctx->cct;
@@ -262,6 +266,8 @@ void OpenRequest<I>::send_v2_get_immutable_metadata() {
   comp->release();
 }
 
+
+// 获取不可修改的meta信息
 template <typename I>
 Context *OpenRequest<I>::handle_v2_get_immutable_metadata(int *result) {
   CephContext *cct = m_image_ctx->cct;
@@ -283,6 +289,7 @@ Context *OpenRequest<I>::handle_v2_get_immutable_metadata(int *result) {
   return nullptr;
 }
 
+// 获取image的stripe信息
 template <typename I>
 void OpenRequest<I>::send_v2_get_stripe_unit_count() {
   CephContext *cct = m_image_ctx->cct;
@@ -365,6 +372,7 @@ Context *OpenRequest<I>::handle_v2_get_create_timestamp(int *result) {
   return nullptr;
 }
 
+// 获取image数据池信息，这里会获取image的数据分布信息
 template <typename I>
 void OpenRequest<I>::send_v2_get_data_pool() {
   CephContext *cct = m_image_ctx->cct;
@@ -382,6 +390,8 @@ void OpenRequest<I>::send_v2_get_data_pool() {
   comp->release();
 }
 
+
+// 成功获取数据分布信息之后初始化imagecontext的layout信息
 template <typename I>
 Context *OpenRequest<I>::handle_v2_get_data_pool(int *result) {
   CephContext *cct = m_image_ctx->cct;
@@ -418,6 +428,7 @@ Context *OpenRequest<I>::handle_v2_get_data_pool(int *result) {
   return nullptr;
 }
 
+// 获取具体的meta信息，比如IO数据分布在哪个osd上
 template <typename I>
 void OpenRequest<I>::send_v2_apply_metadata() {
   CephContext *cct = m_image_ctx->cct;
@@ -436,6 +447,7 @@ void OpenRequest<I>::send_v2_apply_metadata() {
   comp->release();
 }
 
+// 处理获取meta信息的response
 template <typename I>
 Context *OpenRequest<I>::handle_v2_apply_metadata(int *result) {
   CephContext *cct = m_image_ctx->cct;

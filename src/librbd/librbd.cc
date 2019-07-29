@@ -2503,6 +2503,8 @@ extern "C" int rbd_rename(rados_ioctx_t src_p, const char *srcname,
   return r;
 }
 
+// open为librbd初始化一个imageContext，imageContex会有对应的meta信息被初始化
+// layout会被初始化
 extern "C" int rbd_open(rados_ioctx_t p, const char *name, rbd_image_t *image,
 			const char *snap_name)
 {

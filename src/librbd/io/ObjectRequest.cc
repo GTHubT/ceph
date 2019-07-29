@@ -178,6 +178,9 @@ void ObjectRequest<I>::finish(int r) {
 
 /** read **/
 
+// 每个发向osd的read子请求都会创建一个ObjectReadRequest与之对应
+// 用户一个read request会对应到多个ObjectReadRequest
+// 这个ObjectReadRequest是最终执行读操作
 template <typename I>
 ObjectReadRequest<I>::ObjectReadRequest(I *ictx, const std::string &oid,
                                         uint64_t objectno, uint64_t offset,
@@ -195,6 +198,7 @@ void ObjectReadRequest<I>::send() {
   I *image_ctx = this->m_ictx;
   ldout(image_ctx->cct, 20) << dendl;
 
+  // 两种读数据方式，从cache读和从object读
   if (!m_cache_initiated && image_ctx->object_cacher != nullptr) {
     read_cache();
   } else {
@@ -235,6 +239,7 @@ void ObjectReadRequest<I>::handle_read_cache(int r) {
   this->finish(0);
 }
 
+// read_object中最后会调用rados的接口进行读写
 template <typename I>
 void ObjectReadRequest<I>::read_object() {
   I *image_ctx = this->m_ictx;
@@ -260,6 +265,7 @@ void ObjectReadRequest<I>::read_object() {
   }
   op.set_op_flags2(m_op_flags);
 
+  // 通过librados读取数据，返回数据在handle_read_object中处理
   librados::AioCompletion *rados_completion = util::create_rados_callback<
     ObjectReadRequest<I>, &ObjectReadRequest<I>::handle_read_object>(this);
   int flags = image_ctx->get_read_flags(this->m_snap_id);

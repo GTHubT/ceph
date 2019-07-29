@@ -29,6 +29,8 @@ using namespace std;
 #include "ceph_hash.h"
 #include "cmp.h"
 
+
+// 一个object的结构，这个是当前osd上存储的基本单元
 struct object_t {
   string name;
 

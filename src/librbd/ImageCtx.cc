@@ -339,6 +339,9 @@ struct C_InvalidateCache : public Context {
     alignments.push_back(stripe_unit); // stripe unit
     readahead.set_alignments(alignments);
 
+    // 当前image的最基本的数据分布信息，比如底层的object大小
+    // 条带化一个strip单元
+    // stripe这个的意义？
     layout = file_layout_t();
     layout.stripe_unit = stripe_unit;
     layout.stripe_count = stripe_count;
@@ -354,6 +357,7 @@ struct C_InvalidateCache : public Context {
       snprintf(format_string, len, "%s.%%016llx", object_prefix.c_str());
     }
 
+    // layout基本信息
     ldout(cct, 10) << "init_layout stripe_unit " << stripe_unit
 		   << " stripe_count " << stripe_count
 		   << " object_size " << layout.object_size

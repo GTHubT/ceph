@@ -2310,6 +2310,7 @@ void Objecter::_op_submit_with_budget(Op *op, shunique_lock& sul,
   _op_submit(op, sul, ptid);
 }
 
+// 记录inflight op数量
 void Objecter::_send_op_account(Op *op)
 {
   inflight_ops++;
@@ -2426,6 +2427,7 @@ void Objecter::_op_submit(Op *op, shunique_lock& sul, ceph_tid_t *ptid)
   assert(r == 0);
   assert(s);  // may be homeless
 
+  // 更新op统计信息
   _send_op_account(op);
 
   // send?
@@ -2483,6 +2485,7 @@ void Objecter::_op_submit(Op *op, shunique_lock& sul, ceph_tid_t *ptid)
 		 << op->tid << " osd." << (!s->is_homeless() ? s->osd : -1)
 		 << dendl;
 
+  // 为当前op准备session，session是与osd的一个连接
   _session_op_assign(s, op);
 
   if (need_send) {
@@ -3157,6 +3160,7 @@ void Objecter::finish_op(OSDSession *session, ceph_tid_t tid)
   _finish_op(op, 0);
 }
 
+// 发送前准备op必要信息
 MOSDOp *Objecter::_prepare_osd_op(Op *op)
 {
   // rwlock is locked

@@ -38,6 +38,7 @@
 class Message;
 class Messenger;
 
+// 与osd之间的一个连接
 struct Connection : public RefCountedObject {
   mutable Mutex lock;
   Messenger *msgr;
@@ -116,6 +117,7 @@ public:
    *
    * @return 0 on success, or -errno on failure.
    */
+  // 这个send message并不保证op一定被发送，他返回成功只保证挡墙op入队成功
   virtual int send_message(Message *m) = 0;
   /**
    * Send a "keepalive" ping along the given Connection, if it's working.
