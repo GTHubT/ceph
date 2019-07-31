@@ -1115,6 +1115,8 @@ int PrimaryLogPG::do_command(
 
 // ==========================================================
 
+// 在pg上执行op
+// 因为client一侧发向osd的请求可能存在batch
 void PrimaryLogPG::do_pg_op(OpRequestRef op)
 {
   // NOTE: this is non-const because we modify the OSDOp.outdata in
@@ -1134,6 +1136,7 @@ void PrimaryLogPG::do_pg_op(OpRequestRef op)
 
   vector<OSDOp> ops = m->ops;
 
+  // 将message的请求逐个处理
   for (vector<OSDOp>::iterator p = ops.begin(); p != ops.end(); ++p) {
     OSDOp& osd_op = *p;
     bufferlist::iterator bp = p->indata.begin();
@@ -1500,6 +1503,8 @@ void PrimaryLogPG::do_pg_op(OpRequestRef op)
             delete filter;
 	    return;
 	  }
+
+    // 从osd的objecter store中读数据， outdata是读取缓冲区
 	  result = osd->store->read(ch, ghobject_t(oid), 0, 0, osd_op.outdata);
 	}
       }
@@ -1708,6 +1713,7 @@ void PrimaryLogPG::handle_backoff(OpRequestRef& op)
   session->ack_backoff(cct, m->pgid, m->id, begin, end);
 }
 
+// primary pg处理op
 void PrimaryLogPG::do_request(
   OpRequestRef& op,
   ThreadPool::TPHandle &handle)
@@ -1799,10 +1805,13 @@ void PrimaryLogPG::do_request(
     return;
   }
 
+  // op会交给pgbackend
+  // pgbackend会将这个op push给其他的两个follower pg
   assert(is_peered() && flushes_in_progress == 0);
   if (pgbackend->handle_message(op))
     return;
 
+  // primary自己开始执行op处理，后台会异步的进行replication
   switch (op->get_req()->get_type()) {
   case CEPH_MSG_OSD_OP:
   case CEPH_MSG_OSD_BACKOFF:
@@ -1820,6 +1829,8 @@ void PrimaryLogPG::do_request(
 	osd->reply_op_error(op, -EOPNOTSUPP);
 	return;
       }
+
+      // 启动op处理
       do_op(op);
       break;
     case CEPH_MSG_OSD_BACKOFF:
@@ -1910,6 +1921,8 @@ hobject_t PrimaryLogPG::earliest_backfill() const
  * pg lock will be held (if multithreaded)
  * osd_lock NOT held.
  */
+// pg的锁在op处理一开始就锁住了，这个会对整个op的并发性造成严重损失
+// client发来的请求，在同一个pg上只能串行处理，严重降低并发粒度
 void PrimaryLogPG::do_op(OpRequestRef& op)
 {
   FUNCTRACE();
@@ -1973,6 +1986,9 @@ void PrimaryLogPG::do_op(OpRequestRef& op)
 			 CEPH_OSD_FLAG_LOCALIZE_READS)) &&
       op->may_read() &&
       !(op->may_write() || op->may_cache())) {
+    // 对于读请求，一般的非replica也可以处理
+    // 在非primary上进行读操作，如何保证读操作的线性一致性？
+    // handle_misdirected_op在内部只处理ec的pg，对于replication的pg的请求不会处理
     // balanced reads; any replica will do
     if (!(is_primary() || is_replica())) {
       osd->handle_misdirected_op(this, op);

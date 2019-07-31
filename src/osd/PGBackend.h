@@ -49,6 +49,7 @@ typedef ceph::shared_ptr<const OSDMap> OSDMapRef;
   * 3) Handling object access
   * 4) Handling scrub, deep-scrub, repair
   */
+ // PGBackend负责后台进行replication和recover等操作
  class PGBackend {
  public:
    CephContext* cct;

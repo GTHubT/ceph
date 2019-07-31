@@ -6627,6 +6627,7 @@ int BlueStore::set_collection_opts(
   return 0;
 }
 
+// BlueStore实现的读接口
 int BlueStore::read(
   const coll_t& cid,
   const ghobject_t& oid,
@@ -6673,6 +6674,7 @@ int BlueStore::read(
     if (offset == length && offset == 0)
       length = o->onode.size;
 
+    // bluestore do read
     r = _do_read(c, o, offset, length, bl, op_flags);
     if (r == -EIO) {
       logger->inc(l_bluestore_read_eio);
@@ -6725,6 +6727,7 @@ struct region_t {
 typedef list<region_t> regions2read_t;
 typedef map<BlueStore::BlobRef, regions2read_t> blobs2read_t;
 
+// 执行读object
 int BlueStore::_do_read(
   Collection *c,
   OnodeRef o,
@@ -6760,6 +6763,7 @@ int BlueStore::_do_read(
     buffered = true;
   }
 
+  // 检查合法性
   if (offset + length > o->onode.size) {
     length = o->onode.size - offset;
   }
@@ -6778,6 +6782,8 @@ int BlueStore::_do_read(
     read_cache_policy = BufferSpace::BYPASS_CLEAN_CACHE;
   }
 
+  // 以下逻辑就是bluestore具体读写流程
+  // 这里与bluestore具体设计实现紧密相关
   // build blob-wise list to of stuff read (that isn't cached)
   blobs2read_t blobs2read;
   unsigned left = length;

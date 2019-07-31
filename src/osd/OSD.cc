@@ -7196,6 +7196,8 @@ void OSD::dispatch_session_waiting(Session *session, OSDMapRef osdmap)
     session->waiting_on_map.erase(i++);
     op->put();
 
+    // 这里会将message带过来的pg信息通过raw_pg_to_pg找到对应
+    // 真实的actual_pgid
     spg_t pgid;
     if (m->get_type() == CEPH_MSG_OSD_OP) {
       pg_t actual_pgid = osdmap->raw_pg_to_pg(
@@ -9882,7 +9884,7 @@ void OSD::dequeue_op(
   op->mark_reached_pg();
   op->osd_trace.event("dequeue_op");
 
-  // 在osd端发起op操作
+  // 在osd端发起op操作, op应该是由primary pg发起
   pg->do_request(op, handle);
 
   // finish

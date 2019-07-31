@@ -1723,6 +1723,9 @@ public:
    * @param allow_eio if false, assert on -EIO operation failure
    * @returns number of bytes read on success, or negative error code on failure.
    */
+
+   // ceph当前实现的本地存储引擎有filestore和bluestore，这两个类会继承ObjectStore，
+   // 最后的读写操作都是由这些具体的本地存储引擎来实现
    virtual int read(
     const coll_t& cid,
     const ghobject_t& oid,

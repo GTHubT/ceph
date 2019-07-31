@@ -122,6 +122,9 @@ enum {
   l_bluestore_last
 };
 
+// BlueStore继承自ObjectStore，实现其读写接口
+// 用户下来的IO到达osd之后会到达objectstore，然后
+// 有其将对应的读写请求转发到对应的具体的本地实现中
 class BlueStore : public ObjectStore,
 		  public md_config_obs_t {
   // -----------------------------------------------------

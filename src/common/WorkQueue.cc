@@ -346,6 +346,7 @@ void ShardedThreadPool::shardedthreadpool_worker(uint32_t thread_index)
 
 }
 
+// 创建用于处理client message的线程
 void ShardedThreadPool::start_threads()
 {
   assert(shardedpool_lock.is_locked());

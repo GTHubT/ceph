@@ -192,6 +192,7 @@ bool ReplicatedBackend::can_handle_while_inactive(OpRequestRef op)
   }
 }
 
+// ReplicatedBackend会将op push给其他follower pg
 bool ReplicatedBackend::_handle_message(
   OpRequestRef op
   )

@@ -19,6 +19,8 @@
 #include "PGBackend.h"
 #include "include/memory.h"
 
+// ReplicatedBackend继承自PGBackend，从而实现不同的复制策略
+// ec也是一种复制策略，replication也是一种复制策略
 struct C_ReplicatedBackend_OnPullComplete;
 class ReplicatedBackend : public PGBackend {
   struct RPGHandle : public PGBackend::RecoveryHandle {
