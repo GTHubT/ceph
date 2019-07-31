@@ -1993,6 +1993,7 @@ int OSDMap::map_to_pg(
   const pg_pool_t *pool = get_pg_pool(poolid);
   if (!pool)
     return -ENOENT;
+  // 计算出来一个placement seed，这其实是一个int的hash值
   ps_t ps;
   if (!key.empty())
     ps = pool->hash_key(key, nspace);
@@ -2002,6 +2003,7 @@ int OSDMap::map_to_pg(
   return 0;
 }
 
+// 计算object到pg的映射
 int OSDMap::object_locator_to_pg(
   const object_t& oid, const object_locator_t& loc, pg_t &pg) const
 {
@@ -2012,6 +2014,8 @@ int OSDMap::object_locator_to_pg(
     pg = pg_t(loc.hash, loc.get_pool());
     return 0;
   }
+
+  // object -> pg
   return map_to_pg(loc.get_pool(), oid.name, loc.key, loc.nspace, &pg);
 }
 
@@ -2302,6 +2306,8 @@ void OSDMap::_pg_to_up_acting_osds(
     return;
   }
   vector<int> raw;
+
+  // up set 和 acting set
   vector<int> _up;
   vector<int> _acting;
   int _up_primary;

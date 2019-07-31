@@ -7216,6 +7216,9 @@ void OSD::dispatch_session_waiting(Session *session, OSDMapRef osdmap)
   }
 }
 
+// osd接收到message，通过该函数进行消息分发
+// 因为osd上的调度及读写单元是pg，所以osd在
+// 进行op处理时也是将op分发到对应的pg上读写
 void OSD::ms_fast_dispatch(Message *m)
 {
   FUNCTRACE();
@@ -9843,7 +9846,8 @@ void OSD::enqueue_op(spg_t pg, OpRequestRef& op, epoch_t epoch)
 }
 
 
-
+// osd从网络接收到op请求都会直接入队，队列类型目前通常是mclock优先级队列
+// 工作线程会从队列里取出op，并处理
 /*
  * NOTE: dequeue called in worker thread, with pg lock
  */
@@ -9878,6 +9882,7 @@ void OSD::dequeue_op(
   op->mark_reached_pg();
   op->osd_trace.event("dequeue_op");
 
+  // 在osd端发起op操作
   pg->do_request(op, handle);
 
   // finish

@@ -1195,6 +1195,7 @@ public:
   ~OSDService();
 };
 
+// 一个osd的主体
 class OSD : public Dispatcher,
 	    public md_config_obs_t {
   /** OSD **/
@@ -1227,6 +1228,8 @@ protected:
   MgrClient   mgrc;
   PerfCounters      *logger;
   PerfCounters      *recoverystate_perf;
+
+  // 本地单机存储
   ObjectStore *store;
 #ifdef HAVE_LIBFUSE
   FuseStore *fuse_store = nullptr;
@@ -1610,6 +1613,8 @@ private:
   friend struct C_CompleteSplits;
   friend struct C_OpenPGs;
 
+  // op队列，根据选择进行入队出队，mclock是ceph新引入的
+  // qos调度算法
   // -- op queue --
   enum class io_queue {
     prioritized,

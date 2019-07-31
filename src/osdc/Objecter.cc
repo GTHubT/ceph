@@ -1990,6 +1990,8 @@ void Objecter::_maybe_request_map()
       << "_maybe_request_map subscribing (onetime) to next osd map" << dendl;
     flag = CEPH_SUBSCRIBE_ONETIME;
   }
+
+  // 获取osdmap
   epoch_t epoch = osdmap->get_epoch() ? osdmap->get_epoch()+1 : 0;
   if (monc->sub_want("osdmap", epoch, flag)) {
     monc->renew_subs();
@@ -2409,10 +2411,13 @@ void Objecter::_op_submit(Op *op, shunique_lock& sul, ceph_tid_t *ptid)
       sleep(1);
     }
     sul.lock();
+    // 当osdmap出现变更的时候就会重新计算当前的object到pg，pg到osd的映射关系
     if (orig_epoch != osdmap->get_epoch()) {
       // map changed; recalculate mapping
       ldout(cct, 10) << __func__ << " relock raced with osdmap, recalc target"
 		     << dendl;
+      // 在这里计算target，这个target就是这个object对应的pg，和这个pg对应的osd
+      // object到pg的映射是hash算法，pg到osd的映射是CRUSH算法
       check_for_latest_map = _calc_target(&op->target, nullptr)
 	== RECALC_OP_TARGET_POOL_DNE;
       if (s) {
@@ -2778,6 +2783,7 @@ int64_t Objecter::get_object_pg_hash_position(int64_t pool, const string& key,
   return p->raw_hash_to_pg(p->hash_key(key, ns));
 }
 
+// 用于计算object id -> pgid, pgid->osd set
 int Objecter::_calc_target(op_target_t *t, Connection *con, bool any_change)
 {
   // rwlock is locked
@@ -2792,6 +2798,7 @@ int Objecter::_calc_target(op_target_t *t, Connection *con, bool any_change)
 		<< (is_write ? " is_write" : "")
 		<< dendl;
 
+  // 1. 获取pg的逻辑池信息
   const pg_pool_t *pi = osdmap->get_pg_pool(t->base_oloc.pool);
   if (!pi) {
     t->osd = -1;
@@ -2832,6 +2839,7 @@ int Objecter::_calc_target(op_target_t *t, Connection *con, bool any_change)
     assert(t->base_oloc.pool == (int64_t)t->base_pgid.pool());
     pgid = t->base_pgid;
   } else {
+    // 2. 计算object id到pgid的映射
     int ret = osdmap->object_locator_to_pg(t->target_oid, t->target_oloc,
 					   pgid);
     if (ret == -ENOENT) {
@@ -2850,6 +2858,8 @@ int Objecter::_calc_target(op_target_t *t, Connection *con, bool any_change)
   unsigned pg_num = pi->get_pg_num();
   int up_primary, acting_primary;
   vector<int> up, acting;
+
+  // 3. 计算pg id到osd的映射
   osdmap->pg_to_up_acting_osds(pgid, &up, &up_primary,
 			       &acting, &acting_primary);
   bool sort_bitwise = osdmap->test_flag(CEPH_OSDMAP_SORTBITWISE);

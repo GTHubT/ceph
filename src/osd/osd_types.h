@@ -1130,6 +1130,7 @@ struct pg_pool_t {
   static const char *APPLICATION_NAME_RBD;
   static const char *APPLICATION_NAME_RGW;
 
+  // 逻辑池有两种，replication和ec
   enum {
     TYPE_REPLICATED = 1,     // replication
     //TYPE_RAID4 = 2,   // raid4 (never implemented)
@@ -1285,10 +1286,13 @@ struct pg_pool_t {
     }
   }
 
+  // 逻辑池的基本信息
   uint64_t flags;           ///< FLAG_*
   __u8 type;                ///< TYPE_*
+  // 在pg中的osd数量
   __u8 size, min_size;      ///< number of osds in each pg
   __u8 crush_rule;          ///< crush placement rule
+  // hash因子
   __u8 object_hash;         ///< hash mapping object name to ps
 private:
   __u32 pg_num, pgp_num;    ///< number of pgs
@@ -1306,6 +1310,7 @@ public:
   uint64_t auid;            ///< who owns the pg
   __u32 crash_replay_interval; ///< seconds to allow clients to replay ACKed but unCOMMITted requests
 
+  // 当前逻辑池的quota信息
   uint64_t quota_max_bytes; ///< maximum number of bytes for this pool
   uint64_t quota_max_objects; ///< maximum number of objects for this pool
 

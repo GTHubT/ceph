@@ -1155,6 +1155,7 @@ public:
    * set as pg_temp.
    * Each of these pointers must be non-NULL.
    */
+  // pg到osd有两个set: up set和acting set，这两个set的含义？
   void pg_to_up_acting_osds(pg_t pg, vector<int> *up, int *up_primary,
                             vector<int> *acting, int *acting_primary) const {
     _pg_to_up_acting_osds(pg, up, up_primary, acting, acting_primary);

@@ -256,6 +256,10 @@ struct PGPool {
  *
  */
 
+// pg是一个复制组，op最终经过msg上层之后会落到pg
+// pg会处理对应的request.
+// 如何从op找到对应的pg？
+// op从client发送过来的之后就会携带对应的pgid信息
 class PG : public DoutPrefixProvider {
 public:
   bool set_force_recovery(bool b);

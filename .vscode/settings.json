@@ -75,6 +75,9 @@
         "__functional_base_03": "cpp",
         "queue": "cpp",
         "stack": "cpp",
-        "future": "cpp"
+        "future": "cpp",
+        "codecvt": "cpp",
+        "csignal": "cpp",
+        "strstream": "cpp"
     }
 }
