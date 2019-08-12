@@ -3336,6 +3336,7 @@ WRITE_CLASS_ENCODER(ObjectModDesc)
  * pg_log_entry_t - single entry/event in pg log
  *
  */
+// pg之间的log entry
 struct pg_log_entry_t {
   enum {
     MODIFY = 1,   // some unspecified modification (but not *all* modifications)

@@ -2093,6 +2093,7 @@ void PrimaryLogPG::do_op(OpRequestRef& op)
     }
 
     // too big?
+    // 太长
     if (cct->_conf->osd_max_write_size &&
         m->get_data_len() > cct->_conf->osd_max_write_size << 20) {
       // journal can't hold commit!
@@ -2223,6 +2224,7 @@ void PrimaryLogPG::do_op(OpRequestRef& op)
     return;
   }
 
+  // 查找当前object对应的context
   int r = find_object_context(
     oid, &obc, can_create,
     m->has_flag(CEPH_OSD_FLAG_MAP_SNAP_CLONE),
@@ -2418,6 +2420,7 @@ void PrimaryLogPG::do_op(OpRequestRef& op)
 
   op->mark_started();
 
+  // 执行op
   execute_ctx(ctx);
   utime_t prepare_latency = ceph_clock_now();
   prepare_latency -= op->get_dequeued_time();
@@ -3326,6 +3329,7 @@ void PrimaryLogPG::execute_ctx(OpContext *ctx)
         reqid.name._num, reqid.tid, reqid.inc);
   }
 
+  // 准备tansaction，并执行读写请求
   int result = prepare_transaction(ctx);
 
   {
@@ -5894,6 +5898,9 @@ int PrimaryLogPG::do_osd_ops(OpContext *ctx, vector<OSDOp>& ops)
 
       // -- object data --
 
+    // 写请求
+    // 写请求会执行replication间一致性协议
+    // write会触发写pglog
     case CEPH_OSD_OP_WRITE:
       ++ctx->num_write;
       { // write
@@ -5907,6 +5914,7 @@ int PrimaryLogPG::do_osd_ops(OpContext *ctx, vector<OSDOp>& ops)
 	if (pool.info.has_flag(pg_pool_t::FLAG_WRITE_FADVISE_DONTNEED))
 	  op.flags = op.flags | CEPH_OSD_OP_FLAG_FADVISE_DONTNEED;
 
+  // 检查是否需要对齐操作
 	if (pool.info.requires_aligned_append() &&
 	    (op.extent.offset % pool.info.required_alignment() != 0)) {
 	  result = -EOPNOTSUPP;
@@ -5931,6 +5939,7 @@ int PrimaryLogPG::do_osd_ops(OpContext *ctx, vector<OSDOp>& ops)
 	  dout(10) << " old truncate_seq " << op.extent.truncate_seq << " < current " << seq
 		   << ", adjusting write length to " << op.extent.length << dendl;
 	  bufferlist t;
+    // 取出要写入的数据
 	  t.substr_of(osd_op.indata, 0, op.extent.length);
 	  osd_op.indata.swap(t);
         }
@@ -5958,6 +5967,8 @@ int PrimaryLogPG::do_osd_ops(OpContext *ctx, vector<OSDOp>& ops)
 	if (result < 0)
 	  break;
 
+  // 写请求会触发创建新的object
+  // object的创建时lazy的，只会在使用的时候才会创建
 	maybe_create_new_object(ctx);
 
 	if (op.extent.length == 0) {
@@ -7594,6 +7605,7 @@ int PrimaryLogPG::prepare_transaction(OpContext *ctx)
     return -EINVAL;
   }
 
+  // do_osd_ops会在osd上执行读写请求
   // prepare the actual mutation
   int result = do_osd_ops(ctx, *ctx->ops);
   if (result < 0) {
